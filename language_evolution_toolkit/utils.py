@@ -13,6 +13,9 @@ class ImmutableProperty:
     def __get__(self, instance, owner):
         return instance.__dict__['_' + self._name]
 
+    def __set__(self, instance, value):
+        raise AttributeError("Can't set immutable property.")
+
 
 class TrackingID:
     """
