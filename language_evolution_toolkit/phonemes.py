@@ -1,159 +1,122 @@
 import warnings
-from typing import List, Union, Tuple, Iterator
+from typing import List, Union, Tuple, Iterator, Set, Iterable
 
-from ipapy import UNICODE_TO_IPA
 from ipapy.ipachar import IPAChar, IPALetter, IPAVowel, IPADiacritic, IPASuprasegmental, IPAConsonant, IPATone
 from multipledispatch import dispatch
 
-from language_evolution_toolkit.utils import LinguisticObject, ImmutableProperty, TrackingID
+from phones import Phone
+from utils import LinguisticObject, ImmutableProperty, TrackingID, sort_by_element_attribute
 
 
+# TODO: Think about using an attribute to define the conditions for which each phone is used in.
+#  Maybe put it in the phones?
 class Phoneme(LinguisticObject):
     """
     Phoneme is a class that holds information about a given phoneme.
 
     Attributes
     ----------
-    unicode_string: str
-        The string of the phoneme in unicode (e.g. "pʰ")
-    romanization: str
-        The romanization of the phoneme. If not give, it defaults to unicode_string.
-    ipa_chars: List[Union[IPAChar, IPALetter, IPAConsonant, IPAVowel,
-                          IPADiacritic, IPASuprasegmental, IPATone]]
-        A list of the ipa characters defined by the given unicode_string.
-    descriptors: Tuple[str]
-        A list of descriptors (str) that define the phoneme. It is a list of all the descriptors of each character in
-         the unicode_string.
+    transcription: str
+        The string of the phoneme in unicode (e.g. "p" for /p/).
+    allophones: Tuple[Phone]
+        A list of all the allophones that comprise the phoneme.
+    allophone_transcriptions: List[str]
+        A list of all the allophone transcriptions.
+    allophone_ipa_chars: List[List[Union[IPAChar, IPALetter, IPAConsonant, IPAVowel,
+                                         IPADiacritic, IPASuprasegmental, IPATone]]]
+        A list of the ipa characters of all allophones.
+    allophone_descriptors: List[Tuple[str]]
+        A list of all tuples of allophone descriptors.
+    common_descriptors: Tuple[str]
+        A tuple of common descriptors (str) that define the phoneme. It is a list of all the common descriptors  between
+        the phones.
+    all_descriptors: Tuple[str]
+        A tuple of all descriptors (str) that define the phoneme. It is a list of any descriptors that appear in any of
+        the allophones.
 
     Example
     -------
-    >>> example_phoneme = Phoneme("pʰ", "ph")
-    >>> print(example_phoneme.descriptors)
-    ('consonant', 'voiceless', 'bilabial', 'plosive', 'aspirated')
-    >>> print(example_phoneme.__immutables_dict__)
-    {'unicode_string': 'pʰ', 'romanization': 'ph', 'ipa_chars': [bilabial consonant plosive voiceless, aspirated diacritic], 'descriptors': ('consonant', 'voiceless', 'bilabial', 'plosive', 'aspirated')}
-
+    >>> phone_p1 = Phone('p')
+    >>> phone_p2 = Phone('pʰ')
+    >>> phone_p3 = Phone('p̚')
+    >>> phoneme_p = Phoneme('p', [phone_p1, phone_p2, phone_p3])
+    >>> print(phoneme_p.all_descriptors)
+    ('aspirated', 'bilabial', 'consonant', 'no-audible-release', 'plosive', 'voiceless')
+    >>> print(phoneme_p.common_descriptors)
+    ('bilabial', 'consonant', 'plosive', 'voiceless')
     """
 
-    unicode_string = ImmutableProperty()
-    romanization = ImmutableProperty()
-    ipa_chars = ImmutableProperty()
-    descriptors = ImmutableProperty()
+    transcription: str = ImmutableProperty()
+    allophones: Tuple[Phone] = ImmutableProperty()
+    common_descriptors: Tuple[str] = ImmutableProperty()
+    all_descriptors: Tuple[str] = ImmutableProperty()
 
-    def __init__(self, unicode_string: str, romanization: str = '', tracking_id: TrackingID = None):
+    def __init__(self, transcription: str, allophones: Iterable[Union[Phone, str]], tracking_id: TrackingID = None,
+                 assure_uniqueness: bool = True):
         """
         Parameters
         ----------
-        unicode_string: str
-             The string of the phoneme in unicode (e.g. "pʰ").
-        romanization: optional, str
-            The romanization of the phoneme. If not give, it defaults to unicode_string.
+        transcription: str
+             The string of the phoneme in unicode (e.g. "p" for /p/).
+        allophones: Iterable[Union[Phone, str]]
+            A list of all the allophones (as Phone or str) that comprise the phoneme.
         tracking_id: optional, TrackingID
             The tracking identification for linguistic evolution.
         """
-        self._unicode_string: str = unicode_string
-        self._romanization: str = romanization
+        self._transcription: str = transcription
 
-        self._set_ipa_chars()
-        self._set_romanization()
-        self._set_descriptors()
-        super().__init__(tracking_id)
+        allophones: List[Phone] = [allophone if isinstance(allophone, Phone) else Phone(allophone)
+                                   for allophone in allophones]
 
-    def _set_ipa_chars(self):
-        """ Defines the ipa_chars from the unicode_string. """
-        self._ipa_chars: List[Union[IPAChar, IPALetter, IPAConsonant,
-                                    IPAVowel, IPADiacritic, IPASuprasegmental, IPATone]] = []
-        for unicode_char in self.unicode_string:
-            self._ipa_chars.append(UNICODE_TO_IPA[unicode_char])
+        self._allophones: Tuple[Phone] = tuple(sort_by_element_attribute(allophones, 'transcription'))
 
-    def _set_romanization(self):
-        """ Defines romanization as unicode_string if the input romanization value is empty. """
-        if self._romanization == '':
-            self._romanization = self.unicode_string
+        if assure_uniqueness:
+            self._assure_allophone_uniqueness()
 
-    def _set_descriptors(self):
-        """
-        Defines the descriptors (str) as a list of all the descriptors of each character in the unicode_string.
-        Ignores the descriptor 'diacritic'.
-        """
-        descriptors = []
-        for i in range(len(self.ipa_chars)):
-            descriptors = descriptors + self.ipa_chars[i].descriptors
-
-        while 'diacritic' in descriptors:
-            descriptors.remove('diacritic')
-
-        self._descriptors: Tuple[str] = tuple(descriptors)
-
-    def __hash__(self):
-        return hash(self.descriptors)
-
-    def __eq__(self, other: "Phoneme"):
-        """ The Phonemes are the same if their descriptors are the same. Romanization does not play a part in this. """
-        if not self.__class__.__name__ == other.__class__.__name__:
-            return False
-        else:
-            return self.descriptors == other.descriptors
-
-
-class PhonemeCatalog(LinguisticObject):
-    """
-    PhonemeCatalog is a class that holds information about an assortment of phonemes.
-
-    Attributes
-    ----------
-    phonemes: List[Phoneme]
-        A list of all the phonemes in the catalog.
-    unicode_string_list: List[str]
-        List of all the unicode_strings in the phonemes.
-    romanization_list: List[str]
-        List of all the romanizations in the phonemes.
-    ipa_chars_list: List[List[Union[IPAChar, IPALetter, IPAConsonant, IPAVowel,
-                                    IPADiacritic, IPASuprasegmental, IPATone]]]
-        A list of ipa characters of each phoneme.
-    descriptors_list: List[Tuple[str]]
-        A list of all the descriptors in the phonemes.
-
-    Example
-    -------
-    >>> a = Phoneme('a')
-    >>> p = Phoneme('p')
-    >>> e = Phoneme('e')
-    >>> pc = PhonemeCatalog([a, p, e])
-    >>> print(pc)  # returns the list of all the phonemes
-    [Phoneme(unicode_string='a', romanization='a', ipa_chars=[front open unrounded vowel], descriptors=('vowel', 'open', 'front', 'unrounded')), Phoneme(unicode_string='p', romanization='p', ipa_chars=[bilabial consonant plosive voiceless], descriptors=('consonant', 'voiceless', 'bilabial', 'plosive')), Phoneme(unicode_string='e', romanization='e', ipa_chars=[close-mid front unrounded vowel], descriptors=('vowel', 'close-mid', 'front', 'unrounded'))]
-    >>> print(pc.with_descriptors('unrounded'))  # returns all phonemes that are unrounded
-    [Phoneme(unicode_string='a', romanization='a', ipa_chars=[front open unrounded vowel], descriptors=('vowel', 'open', 'front', 'unrounded')), Phoneme(unicode_string='e', romanization='e', ipa_chars=[close-mid front unrounded vowel], descriptors=('vowel', 'close-mid', 'front', 'unrounded'))]
-    """
-
-    phonemes = ImmutableProperty()
-    unicode_string_list = ImmutableProperty()
-    romanization_list = ImmutableProperty()
-    ipa_chars_list = ImmutableProperty()
-    descriptors_list = ImmutableProperty()
-
-    def __init__(self, phonemes: List[Phoneme], tracking_id: TrackingID = None):
-        """
-        Parameters
-        ----------
-        phonemes: List[Phoneme]
-            A list of all the Phonemes that will constitute the PhonemeCatalog.
-        tracking_id: optional, TrackingID
-            The tracking identification for linguistic evolution.
-        """
-        self._phonemes = phonemes
         self.__post_init__()
+
         super().__init__(tracking_id)
 
     def __post_init__(self):
-        self._unicode_string_list: List[str] = [phoneme.unicode_string for phoneme in self.phonemes]
-        self._romanization_list: List[str] = [phoneme.romanization for phoneme in self.phonemes]
-        self._ipa_chars_list: List[List[Union[
-            IPAChar, IPALetter, IPAConsonant, IPAVowel,
-            IPADiacritic, IPASuprasegmental, IPATone]]] = [phoneme.ipa_chars for phoneme in self.phonemes]
-        self._descriptors_list: List[Tuple[str]] = [phoneme.descriptors for phoneme in self.phonemes]
+        self._set_common_descriptors()
+        self._set_all_descriptors()
 
-    def with_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> List[Phoneme]:
+    def _assure_allophone_uniqueness(self):
+        new_allophones: List[Phone] = []
+        for allophone in self.allophones:
+            if allophone not in new_allophones:
+                new_allophones.append(allophone)
+            else:
+                warnings.warn(f'{allophone} is a duplicate in the allophone list. It will be ignored.')
+        self._allophones: Tuple[Phone] = tuple(new_allophones)
+
+    @property
+    def allophone_transcriptions(self) -> List[str]:
+        """ A list of transcriptions of each allophone. """
+        return [allophone.transcription for allophone in self.allophones]
+
+    @property
+    def allophone_ipa_chars(self) -> List[List[Union[
+            IPAChar, IPALetter, IPAConsonant, IPAVowel, IPADiacritic, IPASuprasegmental, IPATone]]]:
+        """ A list of ipa_chars of each allophone. """
+        return [allophone.ipa_chars for allophone in self.allophones]
+
+    @property
+    def allophone_descriptors(self) -> List[Tuple[str]]:
+        """ A list of descriptors of each allophone. """
+        return [allophone.descriptors for allophone in self.allophones]
+
+    def _set_all_descriptors(self):
+        """ Setting the all_descriptors as a tuple of all descriptors appearing in allophones. """
+        all_descriptors: Set[str] = set.union(*[set(ad) for ad in self.allophone_descriptors])
+        self._all_descriptors: Tuple[str] = tuple(sorted(all_descriptors))
+
+    def _set_common_descriptors(self):
+        """ Setting the common_descriptors as a tuple of common descriptors between allophones. """
+        common_descriptors: Set[str] = set.intersection(*[set(ad) for ad in self.allophone_descriptors])
+        self._common_descriptors: Tuple[str] = tuple(sorted(common_descriptors))
+
+    def with_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> List[Phone]:
         """
         Parameter
         ---------
@@ -166,7 +129,200 @@ class PhonemeCatalog(LinguisticObject):
         Returns
         -------
         List[Phonemes]
-            A list of all the phonemes that have all or any of the descriptors in the given list.
+            A list of all the allophones that have all or any of the descriptors in the given list.
+        """
+        if isinstance(descriptors, str):
+            descriptors = [descriptors]
+
+        if exact_match:
+            matching_method = all
+        else:
+            matching_method = any
+
+        phones = []
+        for phone in self.allophones:
+            add_to_list = matching_method([bool(descriptor in phone.descriptors) for descriptor in descriptors])
+            if add_to_list:
+                phones.append(phone)
+
+        return phones
+
+    @dispatch(int)
+    def __getitem__(self, item: int) -> Phone:
+        """
+        Returns
+        -------
+        Phoneme
+            Retrieving allophone by the allophone list index number.
+        """
+        try:
+            return self.allophones[item]
+        except IndexError:
+            raise IndexError('Allophone list index is out of range')
+
+    @dispatch(str)
+    def __getitem__(self, item: str) -> Phone:
+        """
+        Returns
+        -------
+        Phoneme
+            Retrieving allophone by the transcription.
+        """
+        try:
+            return self.allophones[self.allophone_transcriptions.index(item)]
+        except ValueError:
+            raise KeyError(f'{item} is not a phone transcription in the allophone list.')
+
+    def __iter__(self) -> Iterator:
+        """
+        Return
+        ------
+        Iterator
+            Allophone list.
+        """
+        return iter(self.allophones)
+
+    def __hash__(self):
+        return hash(self.allophones)
+
+    def __eq__(self, other: "Phoneme"):
+        """ The Phonemes are the same if their allophones are the same. Transcription does not play a part in this. """
+        if not self.__class__.__name__ == other.__class__.__name__:
+            return False
+        else:
+            return self.allophones == other.allophones
+
+    def __repr__(self):
+        return f"/{self.transcription}/: {self.allophones}"
+
+
+class PhonemeCatalog(LinguisticObject):
+    """
+    PhonemeCatalog is a class that holds information about an assortment of phonemes.
+
+    Attributes
+    ----------
+    phonemes: List[Phoneme]
+        A list of all the phonemes in the catalog.
+    phoneme_transcriptions: List[str]
+        A list of all the transcriptions of the given phonemes.
+    all_descriptors: Tuple[str]
+        A list of all the descriptors of the given phonemes.
+
+    Example
+    -------
+    >>> phoneme_p = Phoneme('p', ['p', 'pʰ', 'p̚'])
+    >>> phoneme_t = Phoneme('t', ['t', 'tʰ', 't̚'])
+    >>> pc = PhonemeCatalog([phoneme_p, phoneme_t])
+    >>> print(pc.phonemes_with_descriptors('bilabial'))
+    [/p/: ([p], [pʰ], [p̚])]
+    >>> print(pc.phones_with_descriptors('aspirated'))
+    [[pʰ], [tʰ]]
+    >>> print(pc.all_descriptors)
+    ('alveolar', 'aspirated', 'bilabial', 'consonant', 'no-audible-release', 'plosive', 'voiceless')
+    """
+
+    phonemes: Tuple[Phoneme] = ImmutableProperty()
+    phones: List[Phone] = ImmutableProperty()
+    all_descriptors: Tuple[str] = ImmutableProperty()
+
+    def __init__(self, phonemes: Iterable[Phoneme], tracking_id: TrackingID = None, assure_uniqueness: bool = True):
+        """
+        Parameters
+        ----------
+        phonemes: Iterable[Phoneme]
+            A list of all the Phonemes that will constitute the PhonemeCatalog.
+        tracking_id: optional, TrackingID
+            The tracking identification for linguistic evolution.
+        """
+        self._phonemes: Tuple[Phoneme] = tuple(sort_by_element_attribute(phonemes, 'transcription'))
+
+        if assure_uniqueness:
+            self._assure_allophone_uniqueness()
+
+        self.__post_init__()
+        super().__init__(tracking_id)
+
+    def __post_init__(self):
+        self._set_phones()
+        self._set_all_descriptors()
+
+    def _assure_allophone_uniqueness(self):
+        new_phonemes = []
+        for phoneme in self.phonemes:
+            if phoneme not in new_phonemes:
+                new_phonemes.append(phoneme)
+            else:
+                warnings.warn(f'{phoneme} is a duplicate in the Phoneme list. It will be ignored.')
+        self._phonemes = new_phonemes
+
+    def _set_phones(self):
+        phones: List[Phone] = []
+        for phoneme in self.phonemes:
+            for phone in phoneme.allophones:
+                if phone not in phones:
+                    phones.append(phone)
+
+        self._phones: List[Phone] = phones
+
+    def _set_all_descriptors(self):
+        """ Setting the all_descriptors as a tuple of all descriptors appearing in all phonemes. """
+        all_descriptors: Set[str] = set.union(*[set(phoneme.all_descriptors) for phoneme in self.phonemes])
+        self._all_descriptors: Tuple[str] = tuple(sorted(all_descriptors))
+
+    @property
+    def phoneme_transcriptions(self) -> List[str]:
+        return [phoneme.transcription for phoneme in self.phonemes]
+
+    @property
+    def phone_transcriptions(self) -> List[str]:
+        return [phone.transcription for phone in self.phones]
+
+    def phones_with_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> List[Phone]:
+        """
+        Parameter
+        ---------
+        descriptors: Union[str, List[str]]
+            A specific descriptor (e.g. 'vowel', 'bilabial', or 'aspired'), or a list of descriptors
+            (e.g. ['bilabial', 'aspired']).
+        exact_math: optional, bool
+            A variable that determined if all the descriptors must describe the phoneme, or only one is good enough.
+
+        Returns
+        -------
+        List[Phone]
+            A list of all the phones that have all or any of the descriptors in the given list.
+        """
+        if isinstance(descriptors, str):
+            descriptors = [descriptors]
+
+        if exact_match:
+            matching_method = all
+        else:
+            matching_method = any
+
+        phones = []
+        for phone in self.phones:
+            add_to_list = matching_method([bool(descriptor in phone.descriptors) for descriptor in descriptors])
+            if add_to_list:
+                phones.append(phone)
+
+        return phones
+
+    def phonemes_with_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> List[Phoneme]:
+        """
+        Parameter
+        ---------
+        descriptors: Union[str, List[str]]
+            A specific descriptor (e.g. 'vowel', 'bilabial', or 'aspired'), or a list of descriptors
+            (e.g. ['bilabial', 'aspired']).
+        exact_math: optional, bool
+            A variable that determined if all the descriptors must describe the phoneme, or only one is good enough.
+
+        Returns
+        -------
+        List[Phoneme]
+            A list of all the phones that have all or any of the descriptors in the given list.
         """
         if isinstance(descriptors, str):
             descriptors = [descriptors]
@@ -178,7 +334,8 @@ class PhonemeCatalog(LinguisticObject):
 
         phonemes = []
         for phoneme in self.phonemes:
-            add_to_list = matching_method([bool(descriptor in phoneme.descriptors) for descriptor in descriptors])
+            add_to_list = matching_method([bool(descriptor in phoneme.common_descriptors)
+                                           for descriptor in descriptors])
             if add_to_list:
                 phonemes.append(phoneme)
 
@@ -206,15 +363,9 @@ class PhonemeCatalog(LinguisticObject):
             Retrieving item by the unicode string or romanization of the phoneme list .
         """
         try:
-            return self.phonemes[self.unicode_string_list.index(item)]
+            return self.phonemes[self.phoneme_transcriptions.index(item)]
         except ValueError:
-            pass
-
-        try:
-            return self.phonemes[self.romanization_list.index(item)]
-        except ValueError:
-            raise KeyError(f'{item} is neither in unicode_string_list nor'
-                           f' in the romanization_list of the phoneme catalog.')
+            raise KeyError(f'{item} is not a phoneme transcription in the phoneme catalog.')
 
     def __iter__(self) -> Iterator:
         """
@@ -237,60 +388,3 @@ class PhonemeCatalog(LinguisticObject):
 
     def __repr__(self):
         return repr(self.phonemes)
-
-    @classmethod
-    def from_lists(cls, unicode_strings: List[str], romanizations: List[str] = None,
-                   phoneme_tracking_ids: List[TrackingID] = None,
-                   catalog_tracking_id: TrackingID = None) -> "PhonemeCatalog":
-        """
-        Implementing a PhonemeCatalog from lists of phoneme components instead of a list of phonemes.
-        Parameters
-        ----------
-        unicode_strings: List[str]
-            List of unicode strings for each phoneme.
-        romanizations: optional, List[str]
-            List of romanizations for each phoneme.
-        phoneme_tracking_ids: List[TrackingID]
-            List of tracking IDs for each phoneme.
-        catalog_tracking_id: TrackingID
-            Tracking identification for linguistic evolution.
-
-        Return
-        ------
-        PhonemeCatalog
-            PhonemeCatalog object defined by the given lists and tracking ID.
-        """
-        if not romanizations:
-            romanizations = len(unicode_strings)*['']
-        if len(unicode_strings) != len(romanizations):
-            raise ValueError("The length of 'unicode_strings' and 'romanizations' lists are not the same.")
-
-        if not phoneme_tracking_ids:
-            phoneme_tracking_ids = [TrackingID() for _ in unicode_strings]
-        if len(unicode_strings) != len(phoneme_tracking_ids):
-            raise ValueError("The length of 'unicode_strings' and 'phoneme_tracking_ids' lists are not the same.")
-
-        phonemes = [Phoneme(us, rms, tids) for (us, rms, tids)
-                    in zip(unicode_strings, romanizations, phoneme_tracking_ids)]
-
-        return cls(phonemes, catalog_tracking_id)
-
-
-class UniquePhonemeCatalog(PhonemeCatalog):
-    """
-    UniquePhonemeCatalog is a class that holds information about an assortment of unique phonemes. If a phoneme in the
-    input list is a duplicate, it will be ignored. Only the first occurrence will remain.
-    """
-
-    def __post_init__(self):
-        self.uniquefy_phonemes()
-        super().__post_init__()
-
-    def uniquefy_phonemes(self):
-        new_phonemes = []
-        for phoneme in self.phonemes:
-            if phoneme not in new_phonemes:
-                new_phonemes.append(phoneme)
-            else:
-                warnings.warn(f'{phoneme} has a duplicate in the Phoneme list. It will be ignored.')
-        self._phonemes = new_phonemes

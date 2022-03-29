@@ -4,5 +4,5 @@ __license__ = "GNU GPL v3 license"
 __description__ = "A tool for evolving languages."
 __email__ = "selewirre@gmail.com"
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __status__ = "Development"

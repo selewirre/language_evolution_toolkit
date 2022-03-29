@@ -1,10 +1,15 @@
 # Version Control Log
 
-- 27/03/2022; v0.0.2: Added Phoneme list class.
+- **29/03/2022; v0.0.3**: Added *Phone* class. Modified *Phoneme(Catalog)* to use allophones (tuple of *Phones*).
+  - Defined *Phone* as a class to hold information about a specific phone (previously done (wrongly) by *Phoneme*).
+  - Modified *Phoneme* to use a tuple of *Phones* as different allophones. Used sets for common and all descriptors.
+  - Modified *PhonemeCatalog* to comply with the changes in *Phonemes*.
+  - Added sort_by_element_attribute utility function to easily sort list of X-type objects by X.attr attributes.
+- **27/03/2022; v0.0.2**: Added Phoneme list class.
   - Defined *PhonemeCatalog* as a class to hold a list of *Phonemes*.
   - Defined *UniquePhonemeCatalog* as a class to hold a list of unique *Phonemes*.
   - *ImmutableProperty* will now raise an AttributeError if an attempt to change its value is made.
-- 26/03/2022; v0.0.1: Initial commit.
+- **26/03/2022; v0.0.1**: Initial commit.
   - Defined *LinguisticObject* as a base object for later operations, such as object comparisons and tracking the object progression over different language evolution stages.
   - Defined *TrackingID* to track changes of *LinguisticObjects* over different language evolution stages.
   - Defined *ImmutableProperty* as the main properties of *LinguisticObjects* and *TrackingID*.

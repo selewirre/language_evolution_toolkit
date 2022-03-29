@@ -1,11 +1,11 @@
 from multipledispatch import dispatch
-from typing import Dict, Any
+from typing import Dict, Any, List, Iterable
 from uuid import uuid4, UUID
 
 
 class ImmutableProperty:
     """
-    ImmutableProperty is a descriptor for class properties that can not be set by the user.
+    ImmutableProperty is a descriptor for class properties that cannot be set by the user.
     """
     def __set_name__(self, owner, name):
         self._name = name
@@ -31,7 +31,7 @@ class TrackingID:
         a total of 5 generations, and our specific leaf belongs to the 23rd branch of the 1st branch of the 5th branch
         of the 2nd branch of the 1st branch of the root.
     leaf: int
-        An integer that indicates the numbered variance of the a specific branch. In the next evolutionary step, the
+        An integer that indicates the numbered variance of a specific branch. In the next evolutionary step, the
         leaf will become the newest branch (appended at the end of the branch string).
     generations: int
         An integer that depicts the generation number of the TrackingID
@@ -41,7 +41,6 @@ class TrackingID:
     >>> a = TrackingID()
     >>> b = TrackingID.from_parent_branch(a)
     >>> c = TrackingID.from_parent_branch(b)
-
     """
 
     root: UUID = ImmutableProperty()
@@ -208,3 +207,8 @@ class LinguisticObject:
         repr_string = ', '.join(repr_list)
         repr_string = f"{self.__class__.__name__}({repr_string})"
         return repr_string
+
+
+def sort_by_element_attribute(target_list: Iterable, attribute: str) -> List:
+    assistant_list = [getattr(item, attribute) for item in target_list]
+    return [item for _, item in sorted(zip(assistant_list, target_list))]

@@ -10,32 +10,38 @@ Here I will build base-code that allows users to apply changes on a given/import
 
 I would like to start off by figuring out an efficient format to represent various linguistic entities.
 
-1. Phoneme
-2. Conditions
-3. Phonotactics
-4. Phonology
-5. Inflections
-6. Words
-7. Word families
-8. Lexicon
-9. Grammar
-10. Syntax
-11. Language
-12. Phonetic change
-13. Language History
+1. Phone
+2. Phoneme
+3. PhonemeCatalog
+4. Conditions
+5. Phonotactics
+6. Phonology
+7. Inflections
+8. Words
+9. Word families
+10. Lexicon
+11. Grammar
+12. Syntax
+13. Language
+14. Phonetic change
+15. Language History
 
-In the following, I will talk about each entity and how I envision its structure. 
+In the following, I will talk about each entity and how I envision/implement its structure. 
 Each entity type mentioned has its own unique base ID number and a "version" number.  Then, throughout the course of linguistic history, the base ID number stays the same, but the version number changes. This will help in easily tracking down the history of each entity.  
 
+### Phone
+A *Phone* is an object that holds:
+
+1. The IPA symbols representing the speech sounds (e.g. [pʰ] as pʰ).
+2. The descriptors of the sound (e.g. bilabial consonant plosive voiceless aspirated).
 
 ### Phoneme
-*Phonemes* are the entities of distinct sound units. Each phoneme will hold the following information:
+A *Phoneme* is an object that carries the information of a single phonemic transcription:
 
-1. *IPA* symbol.
-2. *Romanization*.
-3. A unique number for transliteration purposes (may not be needed?).
-4. Optional user defined *Glyph* for custom scripts.
-
+1. The phonemic transcription (e.g. /p/ as p).
+2. Multiple *Phones* which are the allophones of the phoneme (e.g. pʰ and p).
+3. The common descriptors of all the sounds comprising the phoneme (e.g. bilabial consonant plosive voiceless).
+4. Rules for where to use different phonemes (for implementation I might use/get inspired by this: https://github.com/Schyrsivochter/PythonSCA).
 
 ### Conditions
 *Condition* is a set of rules of phonetic alteration in a given phonetic environment.
@@ -132,7 +138,7 @@ A *WordFamily* is an entity that holds:
 
 ## Closing Remarks
 
-For now, this is the structure I suggest/used in the past. It is not without its faults. I would love to talk in detail about all the above and figure out an optimal definition and functionality for each entity. My code is not complete and has various errors, hence I think I will not share it at the time. Once we start off with the project, I would love for us to set up a github project and start fresh.
+For now, this is the structure I am working on right now. It is not without its faults. I would love suggestions about all the above and figure out an optimal definition and functionality for each entity.
 
 Best,
 
