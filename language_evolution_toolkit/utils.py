@@ -1,5 +1,5 @@
 from multipledispatch import dispatch
-from typing import Dict, Any, List, Iterable
+from typing import Dict, Any, List, Iterable, Union, Tuple
 from uuid import uuid4, UUID
 
 
@@ -210,5 +210,54 @@ class LinguisticObject:
 
 
 def sort_by_element_attribute(target_list: Iterable, attribute: str) -> List:
+    """
+    Sorting a given list of objects by a specific object attribute.
+    Parameters
+    ----------
+    target_list: Iterable
+        List of objects to be sorted.
+    attribute: str
+        Attribute of object in list to sort by.
+
+    Returns
+    -------
+    List
+        The sorted target list.
+    """
     assistant_list = [getattr(item, attribute) for item in target_list]
     return [item for _, item in sorted(zip(assistant_list, target_list))]
+
+
+def check_descriptors(wanted_descriptors: Union[str, List[str], Tuple[str]],
+                      target_descriptors: Union[str, List[str], Tuple[str]]) -> List[bool]:
+    """
+    Check if the (un)wanted descriptors are found in the target descriptor list.
+
+    Parameters
+    ----------
+    wanted_descriptors: Union[str, List[str]]
+        A string or a list of strings with all the descriptors we want to find in a target descriptor list. If the first
+        character of a string is "!", it means that the descriptor is NOT wanted.
+    target_descriptors: Union[str, List[str]]
+        A string or a list of strings with all the target descriptors.
+
+    Returns
+    -------
+    List[bool]
+        A list that matches the size of the wanted descriptors. Each element corresponds to the value of the condition
+        "if wanted descriptor is (not) found in target descriptor list", where "not" is added if the wanted descriptor
+        starts with a "!".
+    """
+    if isinstance(wanted_descriptors, str):
+        wanted_descriptors = [wanted_descriptors]
+
+    if isinstance(target_descriptors, str):
+        target_descriptors = [target_descriptors]
+
+    # if '!' in wanted_descriptors, it means that we need to flip the result of the search.
+    flipping_list = [True if descriptor.startswith('!') else False for descriptor in wanted_descriptors]
+    wanted_descriptors = [descriptor.lstrip('!') for descriptor in wanted_descriptors]  # removing all potential '!'
+
+    return [(descriptor in target_descriptors) ^ flip_value
+            for (flip_value, descriptor) in zip(flipping_list, wanted_descriptors)]
+

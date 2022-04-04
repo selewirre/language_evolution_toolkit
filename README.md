@@ -8,14 +8,14 @@ To install this package, run:
 
 ```
 python3 setup.py sdist bdist_wheel
-pip3 install dist/language_evolution_toolkit-0.0.3.tar.gz
+pip3 install dist/language_evolution_toolkit-0.0.4.tar.gz
 ```
 
 # Project Outline
 [Found here](project_outline.md).
 
 # License 
-GNU GPL v3 license.
+GNU GPL v3 license. Find a copy of the GNU General Public License (here)[https://www.gnu.org/licenses/gpl-3.0.html].
 
 # Copyright
 Copyright (C) 2022 Selewirre Iskvary

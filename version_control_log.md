@@ -1,5 +1,13 @@
 # Version Control Log
 
+- **03/04/2022; v0.0.4**: Added *CustomTrasliterator*, *PhonologicalRule*. Modified *Phone*, *Phoneme* and *PhonemeCatalog*.
+  - Added *check_descriptors* in utils to match descriptor lists and *sort_by_element_attribute* to sort an object by a specific attribute.
+  - Added *has_descriptors* in *Phone* class based on the *check_descriptors* of the utils.
+  - Modified *Phoneme* to be initialized by a single phone transcription.
+  - Modified *Phoneme* and *PhonemeCatalog* to utilize the *check_descriptors*.
+  - Added *CustomTrasliterator* to go back and forth between two lists of strings.
+  - Added *PhonologicalRule* that holds information about a specific sound change.
+  - Added a *tests* folder. 
 - **29/03/2022; v0.0.3**: Added *Phone* class. Modified *Phoneme(Catalog)* to use allophones (tuple of *Phones*).
   - Defined *Phone* as a class to hold information about a specific phone (previously done (wrongly) by *Phoneme*).
   - Modified *Phoneme* to use a tuple of *Phones* as different allophones. Used sets for common and all descriptors.

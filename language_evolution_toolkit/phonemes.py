@@ -4,12 +4,12 @@ from typing import List, Union, Tuple, Iterator, Set, Iterable
 from ipapy.ipachar import IPAChar, IPALetter, IPAVowel, IPADiacritic, IPASuprasegmental, IPAConsonant, IPATone
 from multipledispatch import dispatch
 
-from phones import Phone
-from utils import LinguisticObject, ImmutableProperty, TrackingID, sort_by_element_attribute
+from language_evolution_toolkit.phones import Phone
+from language_evolution_toolkit.utils import LinguisticObject, ImmutableProperty, TrackingID, sort_by_element_attribute, check_descriptors
 
 
 # TODO: Think about using an attribute to define the conditions for which each phone is used in.
-#  Maybe put it in the phones?
+#  Maybe put it in the phones? -> No
 class Phoneme(LinguisticObject):
     """
     Phoneme is a class that holds information about a given phoneme.
@@ -51,22 +51,26 @@ class Phoneme(LinguisticObject):
     common_descriptors: Tuple[str] = ImmutableProperty()
     all_descriptors: Tuple[str] = ImmutableProperty()
 
-    def __init__(self, transcription: str, allophones: Iterable[Union[Phone, str]], tracking_id: TrackingID = None,
-                 assure_uniqueness: bool = True):
+    def __init__(self, transcription: str, allophones: Iterable[Union[Phone, str]] = None,
+                 tracking_id: TrackingID = None, assure_uniqueness: bool = True):
         """
         Parameters
         ----------
         transcription: str
              The string of the phoneme in unicode (e.g. "p" for /p/).
-        allophones: Iterable[Union[Phone, str]]
-            A list of all the allophones (as Phone or str) that comprise the phoneme.
+        allophones: optional, Iterable[Union[Phone, str]]
+            A list of all the allophones (as Phone or str) that comprise the phoneme. Defaults to a single phone same as
+            the phoneme transcription.
         tracking_id: optional, TrackingID
             The tracking identification for linguistic evolution.
         """
         self._transcription: str = transcription
 
-        allophones: List[Phone] = [allophone if isinstance(allophone, Phone) else Phone(allophone)
-                                   for allophone in allophones]
+        if not allophones:
+            allophones = [Phone(self.transcription)]
+        else:
+            allophones: List[Phone] = [allophone if isinstance(allophone, Phone) else Phone(allophone)
+                                       for allophone in allophones]
 
         self._allophones: Tuple[Phone] = tuple(sort_by_element_attribute(allophones, 'transcription'))
 
@@ -116,22 +120,22 @@ class Phoneme(LinguisticObject):
         common_descriptors: Set[str] = set.intersection(*[set(ad) for ad in self.allophone_descriptors])
         self._common_descriptors: Tuple[str] = tuple(sorted(common_descriptors))
 
-    def with_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> List[Phone]:
+    def has_common_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> bool:
         """
         Parameter
         ---------
         descriptors: Union[str, List[str]]
             A specific descriptor (e.g. 'vowel', 'bilabial', or 'aspired'), or a list of descriptors
-            (e.g. ['bilabial', 'aspired']).
+            (e.g. ['bilabial', 'aspired']). If a descriptor starts with "!", it means that the descriptor is NOT wanted.
         exact_math: optional, bool
-            A variable that determined if all the descriptors must describe the phoneme, or only one is good enough.
+            A variable that determined if all the descriptors must describe the phoneme, or if only one is good enough.
 
         Returns
         -------
-        List[Phonemes]
-            A list of all the allophones that have all or any of the descriptors in the given list.
+        bool
+            A value True or False if all or any of the given descriptors describe the phone.
         """
-        if isinstance(descriptors, str):
+        if isinstance(descriptors, str):  # to work with a list of strings either way
             descriptors = [descriptors]
 
         if exact_match:
@@ -139,12 +143,28 @@ class Phoneme(LinguisticObject):
         else:
             matching_method = any
 
-        phones = []
-        for phone in self.allophones:
-            add_to_list = matching_method([bool(descriptor in phone.descriptors) for descriptor in descriptors])
-            if add_to_list:
-                phones.append(phone)
+        return matching_method(check_descriptors(descriptors, self.common_descriptors))
 
+    def find_allophones_with_descriptors(self, descriptors: Union[str, List[str]],
+                                         exact_match: bool = True) -> List[Phone]:
+        """
+        Parameter
+        ---------
+        descriptors: Union[str, List[str]]
+            A specific descriptor (e.g. 'vowel', 'bilabial', or 'aspired'), or a list of descriptors
+            (e.g. ['bilabial', 'aspired']). If a descriptor starts with "!", it means that the descriptor is NOT wanted.
+        exact_math: optional, bool
+            A variable that determined if all the descriptors must describe the phoneme, or if only one is good enough.
+
+        Returns
+        -------
+        List[Phonemes]
+            A list of all the allophones that have all or any of the descriptors in the given list.
+        """
+        if isinstance(descriptors, str):  # to work with a list of strings either way
+            descriptors = [descriptors]
+
+        phones = [phone for phone in self.allophones if phone.has_descriptors(descriptors, exact_match)]
         return phones
 
     @dispatch(int)
@@ -214,9 +234,9 @@ class PhonemeCatalog(LinguisticObject):
     >>> phoneme_p = Phoneme('p', ['p', 'pʰ', 'p̚'])
     >>> phoneme_t = Phoneme('t', ['t', 'tʰ', 't̚'])
     >>> pc = PhonemeCatalog([phoneme_p, phoneme_t])
-    >>> print(pc.phonemes_with_descriptors('bilabial'))
+    >>> print(pc.find_phonemes_with_descriptors('bilabial'))
     [/p/: ([p], [pʰ], [p̚])]
-    >>> print(pc.phones_with_descriptors('aspirated'))
+    >>> print(pc.find_phones_with_descriptors('aspirated'))
     [[pʰ], [tʰ]]
     >>> print(pc.all_descriptors)
     ('alveolar', 'aspirated', 'bilabial', 'consonant', 'no-audible-release', 'plosive', 'voiceless')
@@ -226,15 +246,21 @@ class PhonemeCatalog(LinguisticObject):
     phones: List[Phone] = ImmutableProperty()
     all_descriptors: Tuple[str] = ImmutableProperty()
 
-    def __init__(self, phonemes: Iterable[Phoneme], tracking_id: TrackingID = None, assure_uniqueness: bool = True):
+    def __init__(self, phonemes: Iterable[Union[Phoneme, Phone, str]], tracking_id: TrackingID = None, assure_uniqueness: bool = True):
         """
         Parameters
         ----------
-        phonemes: Iterable[Phoneme]
+        phonemes: Iterable[Union[Phoneme, Phone, str]]
             A list of all the Phonemes that will constitute the PhonemeCatalog.
         tracking_id: optional, TrackingID
             The tracking identification for linguistic evolution.
         """
+        phonemes = [val if isinstance(val, Phoneme) else Phoneme(val.transcription if isinstance(val, Phone) else val)
+                    for val in phonemes]
+
+        if not len(phonemes):
+            raise ValueError(f'Phoneme list can not be empty.')
+
         self._phonemes: Tuple[Phoneme] = tuple(sort_by_element_attribute(phonemes, 'transcription'))
 
         if assure_uniqueness:
@@ -262,7 +288,6 @@ class PhonemeCatalog(LinguisticObject):
             for phone in phoneme.allophones:
                 if phone not in phones:
                     phones.append(phone)
-
         self._phones: List[Phone] = phones
 
     def _set_all_descriptors(self):
@@ -278,13 +303,13 @@ class PhonemeCatalog(LinguisticObject):
     def phone_transcriptions(self) -> List[str]:
         return [phone.transcription for phone in self.phones]
 
-    def phones_with_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> List[Phone]:
+    def find_phones_with_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> List[Phone]:
         """
         Parameter
         ---------
         descriptors: Union[str, List[str]]
             A specific descriptor (e.g. 'vowel', 'bilabial', or 'aspired'), or a list of descriptors
-            (e.g. ['bilabial', 'aspired']).
+            (e.g. ['bilabial', 'aspired']). If a descriptor starts with "!", it means that the descriptor is NOT wanted.
         exact_math: optional, bool
             A variable that determined if all the descriptors must describe the phoneme, or only one is good enough.
 
@@ -296,26 +321,17 @@ class PhonemeCatalog(LinguisticObject):
         if isinstance(descriptors, str):
             descriptors = [descriptors]
 
-        if exact_match:
-            matching_method = all
-        else:
-            matching_method = any
-
-        phones = []
-        for phone in self.phones:
-            add_to_list = matching_method([bool(descriptor in phone.descriptors) for descriptor in descriptors])
-            if add_to_list:
-                phones.append(phone)
-
+        phones = [phone for phone in self.phones if phone.has_descriptors(descriptors, exact_match)]
         return phones
 
-    def phonemes_with_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> List[Phoneme]:
+    def find_phonemes_with_descriptors(self, descriptors: Union[str, List[str]],
+                                       exact_match: bool = True) -> List[Phoneme]:
         """
         Parameter
         ---------
         descriptors: Union[str, List[str]]
             A specific descriptor (e.g. 'vowel', 'bilabial', or 'aspired'), or a list of descriptors
-            (e.g. ['bilabial', 'aspired']).
+            (e.g. ['bilabial', 'aspired']). If a descriptor starts with "!", it means that the descriptor is NOT wanted.
         exact_math: optional, bool
             A variable that determined if all the descriptors must describe the phoneme, or only one is good enough.
 
@@ -327,18 +343,7 @@ class PhonemeCatalog(LinguisticObject):
         if isinstance(descriptors, str):
             descriptors = [descriptors]
 
-        if exact_match:
-            matching_method = all
-        else:
-            matching_method = any
-
-        phonemes = []
-        for phoneme in self.phonemes:
-            add_to_list = matching_method([bool(descriptor in phoneme.common_descriptors)
-                                           for descriptor in descriptors])
-            if add_to_list:
-                phonemes.append(phoneme)
-
+        phonemes = [phoneme for phoneme in self.phonemes if phoneme.has_common_descriptors(descriptors, exact_match)]
         return phonemes
 
     @dispatch(int)

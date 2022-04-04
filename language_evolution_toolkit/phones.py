@@ -3,7 +3,7 @@ from typing import List, Union, Tuple
 from ipapy import UNICODE_TO_IPA
 from ipapy.ipachar import IPAChar, IPALetter, IPAVowel, IPADiacritic, IPASuprasegmental, IPAConsonant, IPATone
 
-from language_evolution_toolkit.utils import LinguisticObject, ImmutableProperty, TrackingID
+from language_evolution_toolkit.utils import LinguisticObject, ImmutableProperty, TrackingID, check_descriptors
 
 
 class Phone(LinguisticObject):
@@ -30,9 +30,10 @@ class Phone(LinguisticObject):
     {'transcription': 'pʰ', 'ipa_chars': [bilabial consonant plosive voiceless, aspirated diacritic], 'descriptors': ('aspirated', 'bilabial', 'consonant', 'plosive', 'voiceless')}
     """
 
-    transcription = ImmutableProperty()
-    ipa_chars = ImmutableProperty()
-    descriptors = ImmutableProperty()
+    transcription: str = ImmutableProperty()
+    ipa_chars: List[Union[IPAChar, IPALetter, IPAConsonant, IPAVowel,
+                          IPADiacritic, IPASuprasegmental, IPATone]] = ImmutableProperty()
+    descriptors: Tuple[str] = ImmutableProperty()
 
     def __init__(self, transcription: str, tracking_id: TrackingID = None):
         """
@@ -70,6 +71,31 @@ class Phone(LinguisticObject):
 
         self._descriptors: Tuple[str] = tuple(sorted(descriptors))
 
+    def has_descriptors(self, descriptors: Union[str, List[str]], exact_match: bool = True) -> bool:
+        """
+        Parameter
+        ---------
+        descriptors: Union[str, List[str]]
+            A specific descriptor (e.g. 'vowel', 'bilabial', or 'aspired'), or a list of descriptors
+            (e.g. ['bilabial', 'aspired']). If a descriptor starts with "!", it means that the descriptor is NOT wanted.
+        exact_math: optional, bool
+            A variable that determined if all the descriptors must describe the phoneme, or if only one is good enough.
+
+        Returns
+        -------
+        bool
+            A value True or False if all or any of the given descriptors describe the phone.
+        """
+        if isinstance(descriptors, str):  # to work with a list of strings either way
+            descriptors = [descriptors]
+
+        if exact_match:
+            matching_method = all
+        else:
+            matching_method = any
+
+        return matching_method(check_descriptors(descriptors, self.descriptors))
+
     def __hash__(self):
         return hash(self.descriptors)
 
@@ -81,4 +107,4 @@ class Phone(LinguisticObject):
             return self.descriptors == other.descriptors
 
     def __repr__(self):
-        return f"[{self.transcription}]"
+        return f"<{self.transcription}>"
