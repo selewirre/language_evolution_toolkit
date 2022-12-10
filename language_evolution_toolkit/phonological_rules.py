@@ -6,7 +6,7 @@ from typing import List, Union, Tuple, Dict
 import numpy as np
 
 from language_evolution_toolkit.phonemes import PhonemeCatalog
-from language_evolution_toolkit.transliterator import CustomTransliterator
+from language_evolution_toolkit.transliterator import Transliterator
 from language_evolution_toolkit.utils import ImmutableProperty
 
 # A dictionary of abbreviations of descriptor lists (e.g. C for [consonant] and V for [vowel].)
@@ -38,7 +38,7 @@ descriptor_abbreviations = {
     # 'Z': Continuant,
 }
 
-descriptor_abbreviation_transliterator = CustomTransliterator(descriptor_abbreviations)
+descriptor_abbreviation_transliterator = Transliterator(descriptor_abbreviations)
 
 
 class PhonologicalRule:
@@ -80,7 +80,7 @@ class PhonologicalRule:
         A dict where the keys are all the sound strings that could potentially be changed
         (e.g. h -> 0 / #_ would a single key '#h'.) and the corresponding values are the strings the keys will turn to
         (e.g. h -> 0 / #_ would give 'h'.)
-    change_transliterator: CustomTransliterator
+    change_transliterator: Transliterator
         Defined by the change_dict, it is a transliterator that can be used to apply all the potential sound changes.
     """
     rule: str = ImmutableProperty()
@@ -91,7 +91,7 @@ class PhonologicalRule:
     environment: str = ImmutableProperty()
 
     change_dict: Dict[str, str] = ImmutableProperty()
-    change_transliterator: CustomTransliterator = ImmutableProperty()
+    change_transliterator: Transliterator = ImmutableProperty()
 
     def __init__(self, rule: str, phoneme_catalog: Union[PhonemeCatalog, None] = None):
         """
@@ -160,7 +160,7 @@ class PhonologicalRule:
             environment_list = process_rule_element(self.environment, self.phoneme_catalog)
 
             self._change_dict = get_change_dict(target_list, replacement_list, environment_list)
-            self._change_transliterator = CustomTransliterator(self.change_dict)
+            self._change_transliterator = Transliterator(self.change_dict)
         else:
             self._change_dict = None
             self._change_transliterator = None
@@ -572,7 +572,7 @@ def get_change_dict(targets: List[str], replacements: List[str], environments: L
     return {init: final for (init, final) in zip(init_list, final_list)}
 
 
-def apply_sound_change(words: List[str], change_transliterator: CustomTransliterator) -> Tuple[List[str], List[bool]]:
+def apply_sound_change(words: List[str], change_transliterator: Transliterator) -> Tuple[List[str], List[bool]]:
     """
     Using a custom transliterator, this function applies sounds changes to a list of words.
     Pending: This function will become more complex when we add the wildcard option "...", the stem option "$" or the

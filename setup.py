@@ -1,6 +1,10 @@
 import setuptools
 
-from language_evolution_toolkit import __author__, __license__, __description__, __email__, __version__
+__author__ = "Selewirre Iskvary"
+__license__ = "GNU GPL v3 license"
+__description__ = "A tool for evolving languages."
+__email__ = "selewirre@gmail.com"
+__version__ = "0.0.5"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -17,8 +21,10 @@ setuptools.setup(
     package_dir={'language_evolution_toolkit': 'language_evolution_toolkit'},
     package_data={'language_evolution_toolkit': []},
     install_requires=[
+        'ipapy'
         'multipledispatch',
-        'ipapy'],
+        'numpy'
+    ],
     license=__license__,
     classifiers=[
         "Programming Language :: Python :: 3",

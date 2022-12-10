@@ -1,5 +1,8 @@
 # Version Control Log
 
+- **10/12/2022; v0.0.5**: Replaced *CustomTrasliterator* with *Trasliterator*. Modified *PhonologicalRule*.
+  - Inspired by the "transliterate" package the previous version used, I wrote a simpler *Transliterator*. 
+  - Modified *PhonologicalRule* to reflect the *Transliterator* name-change.
 - **03/04/2022; v0.0.4**: Added *CustomTrasliterator*, *PhonologicalRule*. Modified *Phone*, *Phoneme* and *PhonemeCatalog*.
   - Added *check_descriptors* in utils to match descriptor lists and *sort_by_element_attribute* to sort an object by a specific attribute.
   - Added *has_descriptors* in *Phone* class based on the *check_descriptors* of the utils.

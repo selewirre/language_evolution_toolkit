@@ -17,6 +17,7 @@ class ImmutableProperty:
         raise AttributeError("Can't set immutable property.")
 
 
+# TODO: change branch from string to tuple (with repr as string)
 class TrackingID:
     """
     TrackingID is a class that holds information that will help track LinguisticObjects throughout multiple steps of
@@ -260,4 +261,3 @@ def check_descriptors(wanted_descriptors: Union[str, List[str], Tuple[str]],
 
     return [(descriptor in target_descriptors) ^ flip_value
             for (flip_value, descriptor) in zip(flipping_list, wanted_descriptors)]
-
