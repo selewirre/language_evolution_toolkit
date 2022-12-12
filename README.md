@@ -8,7 +8,7 @@ To install this package, run:
 
 ```
 python3 setup.py sdist bdist_wheel
-pip3 install dist/language_evolution_toolkit-0.0.4.tar.gz
+pip3 install dist/language_evolution_toolkit-0.0.6.tar.gz
 ```
 
 # Project Outline

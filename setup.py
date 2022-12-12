@@ -4,7 +4,7 @@ __author__ = "Selewirre Iskvary"
 __license__ = "GNU GPL v3 license"
 __description__ = "A tool for evolving languages."
 __email__ = "selewirre@gmail.com"
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -21,7 +21,7 @@ setuptools.setup(
     package_dir={'language_evolution_toolkit': 'language_evolution_toolkit'},
     package_data={'language_evolution_toolkit': []},
     install_requires=[
-        'ipapy'
+        'ipapy',
         'multipledispatch',
         'numpy'
     ],

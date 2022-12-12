@@ -1,5 +1,11 @@
 # Version Control Log
 
+- **11/12/2022; v0.0.6**: Modified *phonological_rules*, *phonemes*, *utils*.
+  - Added X (== [*]) value as single character wildcard for a phonetic rule.
+  - Added more possible combinations of multiple targets, replacements and environments.
+  - Fixed small bugs with transliteration functions. 
+  - Added a function to find an IPA char by providing a descriptor list *find_ipachar_by_descriptors* in *utils* (will be used in the future).
+  - Added the option to initialize a *PhonemeCatalog* with *Phonemes* with multiple allophones without directly defining a *Phoneme* (via a dictionary).
 - **10/12/2022; v0.0.5**: Replaced *CustomTrasliterator* with *Trasliterator*. Modified *PhonologicalRule*.
   - Inspired by the "transliterate" package the previous version used, I wrote a simpler *Transliterator*. 
   - Modified *PhonologicalRule* to reflect the *Transliterator* name-change.

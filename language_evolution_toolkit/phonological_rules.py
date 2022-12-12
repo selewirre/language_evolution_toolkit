@@ -1,4 +1,3 @@
-
 import itertools
 import re
 from typing import List, Union, Tuple, Dict
@@ -8,6 +7,8 @@ import numpy as np
 from language_evolution_toolkit.phonemes import PhonemeCatalog
 from language_evolution_toolkit.transliterator import Transliterator
 from language_evolution_toolkit.utils import ImmutableProperty
+
+# See similar work at https://www.vulgarlang.com/sound-changes/
 
 # A dictionary of abbreviations of descriptor lists (e.g. C for [consonant] and V for [vowel].)
 descriptor_abbreviations = {
@@ -35,6 +36,7 @@ descriptor_abbreviations = {
     # 'U': Syllable,
     'V': '[vowel]',
     # 'W': '{[approximant],[lateral-approximant]}',
+    'X': '[*]'
     # 'Z': Continuant,
 }
 
@@ -60,6 +62,7 @@ class PhonologicalRule:
         - Hashtag "#": word boundary.
         - exclamation mark "!": declares exception (e.g. !N meaning for non-nasals)
         - The number zero "0": declares "nothing" (e.g. h -> 0 / #_ as in h disappears if word initial)
+        - X means any phone in the phoneme catalog.
 
         Special characters to be implemented:
 
@@ -108,6 +111,7 @@ class PhonologicalRule:
             - Hashtag "#": word boundary.
             - exclamation mark "!": declares exception (e.g. !N meaning for non-nasals)
             - The number zero "0": declares "nothing" (e.g. h -> 0 / #_ as in h disappears if word initial)
+            - X means any phone in the phoneme catalog.
 
             Special characters to be implemented:
 
@@ -155,7 +159,7 @@ class PhonologicalRule:
     def _set_change_dict(self):
         """ Getting the lists of changes. """
         if self.phoneme_catalog is not None:
-            target_list = process_rule_element(self.target.replace('0', ''), self.phoneme_catalog)
+            target_list = process_rule_element(self.target, self.phoneme_catalog)
             replacement_list = process_rule_element(self.replacement, self.phoneme_catalog)
             environment_list = process_rule_element(self.environment, self.phoneme_catalog)
 
@@ -318,7 +322,7 @@ def process_descriptor_abbreviations(string: str) -> str:
     >>> process_descriptor_abbreviations('VN(t)_!#')
     '[vowel][nasal](t)_!#'
     """
-    return descriptor_abbreviation_transliterator.translit(string)
+    return descriptor_abbreviation_transliterator.transliterate(string)
 
 
 def process_square_brackets(string: str, phoneme_catalog: PhonemeCatalog) -> str:
@@ -349,7 +353,7 @@ def process_square_brackets(string: str, phoneme_catalog: PhonemeCatalog) -> str
     results = list(np.unique(re.findall('\[.*?\]', string)))
 
     # A list of lists of descriptors e.g. [['nasal'], ['vowel']]
-    descriptors_list = [result.strip('][').split(',') for result in results]
+    descriptors_list = [result.strip('][').replace(' ', '').split(',') for result in results]
 
     # finding phones by descriptor criteria [['nasal'], ['vowel']] -> [['m', 'n'], ['a', 'e', 'i', 'o', 'u', 'y']]
     phone_lists = [[phone.transcription for phone in phoneme_catalog.find_phones_with_descriptors(descriptors, True)]
@@ -512,8 +516,9 @@ def process_rule_element(string: str, phoneme_catalog: PhonemeCatalog) -> List[s
     --------
     >>> pc = PhonemeCatalog(['a', 'e', 'i', 'o', 'u', 'y', 'p', 't', 'k', 'l', 'r', 'm', 'n'])
     >>> process_rule_element('VN(t)_!#', pc)
-        ['amt_a', 'amt_e', 'amt_i', 'amt_k', 'amt_l', 'amt_m', 'amt_n', 'amt_o', 'amt_p', 'amt_r', 'amt_t', 'amt_u', 'amt_y', 'am_a', 'am_e', 'am_i', 'am_k', 'am_l', 'am_m', 'am_n', 'am_o', 'am_p', 'am_r', 'am_t', 'am_u', 'am_y', 'ant_a', 'ant_e', 'ant_i', 'ant_k', 'ant_l', 'ant_m', 'ant_n', 'ant_o', 'ant_p', 'ant_r', 'ant_t', 'ant_u', 'ant_y', 'an_a', 'an_e', 'an_i', 'an_k', 'an_l', 'an_m', 'an_n', 'an_o', 'an_p', 'an_r', 'an_t', 'an_u', 'an_y', 'emt_a', 'emt_e', 'emt_i', 'emt_k', 'emt_l', 'emt_m', 'emt_n', 'emt_o', 'emt_p', 'emt_r', 'emt_t', 'emt_u', 'emt_y', 'em_a', 'em_e', 'em_i', 'em_k', 'em_l', 'em_m', 'em_n', 'em_o', 'em_p', 'em_r', 'em_t', 'em_u', 'em_y', 'ent_a', 'ent_e', 'ent_i', 'ent_k', 'ent_l', 'ent_m', 'ent_n', 'ent_o', 'ent_p', 'ent_r', 'ent_t', 'ent_u', 'ent_y', 'en_a', 'en_e', 'en_i', 'en_k', 'en_l', 'en_m', 'en_n', 'en_o', 'en_p', 'en_r', 'en_t', 'en_u', 'en_y', 'imt_a', 'imt_e', 'imt_i', 'imt_k', 'imt_l', 'imt_m', 'imt_n', 'imt_o', 'imt_p', 'imt_r', 'imt_t', 'imt_u', 'imt_y', 'im_a', 'im_e', 'im_i', 'im_k', 'im_l', 'im_m', 'im_n', 'im_o', 'im_p', 'im_r', 'im_t', 'im_u', 'im_y', 'int_a', 'int_e', 'int_i', 'int_k', 'int_l', 'int_m', 'int_n', 'int_o', 'int_p', 'int_r', 'int_t', 'int_u', 'int_y', 'in_a', 'in_e', 'in_i', 'in_k', 'in_l', 'in_m', 'in_n', 'in_o', 'in_p', 'in_r', 'in_t', 'in_u', 'in_y', 'omt_a', 'omt_e', 'omt_i', 'omt_k', 'omt_l', 'omt_m', 'omt_n', 'omt_o', 'omt_p', 'omt_r', 'omt_t', 'omt_u', 'omt_y', 'om_a', 'om_e', 'om_i', 'om_k', 'om_l', 'om_m', 'om_n', 'om_o', 'om_p', 'om_r', 'om_t', 'om_u', 'om_y', 'ont_a', 'ont_e', 'ont_i', 'ont_k', 'ont_l', 'ont_m', 'ont_n', 'ont_o', 'ont_p', 'ont_r', 'ont_t', 'ont_u', 'ont_y', 'on_a', 'on_e', 'on_i', 'on_k', 'on_l', 'on_m', 'on_n', 'on_o', 'on_p', 'on_r', 'on_t', 'on_u', 'on_y', 'umt_a', 'umt_e', 'umt_i', 'umt_k', 'umt_l', 'umt_m', 'umt_n', 'umt_o', 'umt_p', 'umt_r', 'umt_t', 'umt_u', 'umt_y', 'um_a', 'um_e', 'um_i', 'um_k', 'um_l', 'um_m', 'um_n', 'um_o', 'um_p', 'um_r', 'um_t', 'um_u', 'um_y', 'unt_a', 'unt_e', 'unt_i', 'unt_k', 'unt_l', 'unt_m', 'unt_n', 'unt_o', 'unt_p', 'unt_r', 'unt_t', 'unt_u', 'unt_y', 'un_a', 'un_e', 'un_i', 'un_k', 'un_l', 'un_m', 'un_n', 'un_o', 'un_p', 'un_r', 'un_t', 'un_u', 'un_y', 'ymt_a', 'ymt_e', 'ymt_i', 'ymt_k', 'ymt_l', 'ymt_m', 'ymt_n', 'ymt_o', 'ymt_p', 'ymt_r', 'ymt_t', 'ymt_u', 'ymt_y', 'ym_a', 'ym_e', 'ym_i', 'ym_k', 'ym_l', 'ym_m', 'ym_n', 'ym_o', 'ym_p', 'ym_r', 'ym_t', 'ym_u', 'ym_y', 'ynt_a', 'ynt_e', 'ynt_i', 'ynt_k', 'ynt_l', 'ynt_m', 'ynt_n', 'ynt_o', 'ynt_p', 'ynt_r', 'ynt_t', 'ynt_u', 'ynt_y', 'yn_a', 'yn_e', 'yn_i', 'yn_k', 'yn_l', 'yn_m', 'yn_n', 'yn_o', 'yn_p', 'yn_r', 'yn_t', 'yn_u', 'yn_y']
+    ['amt_a', 'amt_e', 'amt_i', 'amt_k', 'amt_l', 'amt_m', 'amt_n', 'amt_o', 'amt_p', 'amt_r', 'amt_t', 'amt_u', 'amt_y', 'am_a', 'am_e', 'am_i', 'am_k', 'am_l', 'am_m', 'am_n', 'am_o', 'am_p', 'am_r', 'am_t', 'am_u', 'am_y', 'ant_a', 'ant_e', 'ant_i', 'ant_k', 'ant_l', 'ant_m', 'ant_n', 'ant_o', 'ant_p', 'ant_r', 'ant_t', 'ant_u', 'ant_y', 'an_a', 'an_e', 'an_i', 'an_k', 'an_l', 'an_m', 'an_n', 'an_o', 'an_p', 'an_r', 'an_t', 'an_u', 'an_y', 'emt_a', 'emt_e', 'emt_i', 'emt_k', 'emt_l', 'emt_m', 'emt_n', 'emt_o', 'emt_p', 'emt_r', 'emt_t', 'emt_u', 'emt_y', 'em_a', 'em_e', 'em_i', 'em_k', 'em_l', 'em_m', 'em_n', 'em_o', 'em_p', 'em_r', 'em_t', 'em_u', 'em_y', 'ent_a', 'ent_e', 'ent_i', 'ent_k', 'ent_l', 'ent_m', 'ent_n', 'ent_o', 'ent_p', 'ent_r', 'ent_t', 'ent_u', 'ent_y', 'en_a', 'en_e', 'en_i', 'en_k', 'en_l', 'en_m', 'en_n', 'en_o', 'en_p', 'en_r', 'en_t', 'en_u', 'en_y', 'imt_a', 'imt_e', 'imt_i', 'imt_k', 'imt_l', 'imt_m', 'imt_n', 'imt_o', 'imt_p', 'imt_r', 'imt_t', 'imt_u', 'imt_y', 'im_a', 'im_e', 'im_i', 'im_k', 'im_l', 'im_m', 'im_n', 'im_o', 'im_p', 'im_r', 'im_t', 'im_u', 'im_y', 'int_a', 'int_e', 'int_i', 'int_k', 'int_l', 'int_m', 'int_n', 'int_o', 'int_p', 'int_r', 'int_t', 'int_u', 'int_y', 'in_a', 'in_e', 'in_i', 'in_k', 'in_l', 'in_m', 'in_n', 'in_o', 'in_p', 'in_r', 'in_t', 'in_u', 'in_y', 'omt_a', 'omt_e', 'omt_i', 'omt_k', 'omt_l', 'omt_m', 'omt_n', 'omt_o', 'omt_p', 'omt_r', 'omt_t', 'omt_u', 'omt_y', 'om_a', 'om_e', 'om_i', 'om_k', 'om_l', 'om_m', 'om_n', 'om_o', 'om_p', 'om_r', 'om_t', 'om_u', 'om_y', 'ont_a', 'ont_e', 'ont_i', 'ont_k', 'ont_l', 'ont_m', 'ont_n', 'ont_o', 'ont_p', 'ont_r', 'ont_t', 'ont_u', 'ont_y', 'on_a', 'on_e', 'on_i', 'on_k', 'on_l', 'on_m', 'on_n', 'on_o', 'on_p', 'on_r', 'on_t', 'on_u', 'on_y', 'umt_a', 'umt_e', 'umt_i', 'umt_k', 'umt_l', 'umt_m', 'umt_n', 'umt_o', 'umt_p', 'umt_r', 'umt_t', 'umt_u', 'umt_y', 'um_a', 'um_e', 'um_i', 'um_k', 'um_l', 'um_m', 'um_n', 'um_o', 'um_p', 'um_r', 'um_t', 'um_u', 'um_y', 'unt_a', 'unt_e', 'unt_i', 'unt_k', 'unt_l', 'unt_m', 'unt_n', 'unt_o', 'unt_p', 'unt_r', 'unt_t', 'unt_u', 'unt_y', 'un_a', 'un_e', 'un_i', 'un_k', 'un_l', 'un_m', 'un_n', 'un_o', 'un_p', 'un_r', 'un_t', 'un_u', 'un_y', 'ymt_a', 'ymt_e', 'ymt_i', 'ymt_k', 'ymt_l', 'ymt_m', 'ymt_n', 'ymt_o', 'ymt_p', 'ymt_r', 'ymt_t', 'ymt_u', 'ymt_y', 'ym_a', 'ym_e', 'ym_i', 'ym_k', 'ym_l', 'ym_m', 'ym_n', 'ym_o', 'ym_p', 'ym_r', 'ym_t', 'ym_u', 'ym_y', 'ynt_a', 'ynt_e', 'ynt_i', 'ynt_k', 'ynt_l', 'ynt_m', 'ynt_n', 'ynt_o', 'ynt_p', 'ynt_r', 'ynt_t', 'ynt_u', 'ynt_y', 'yn_a', 'yn_e', 'yn_i', 'yn_k', 'yn_l', 'yn_m', 'yn_n', 'yn_o', 'yn_p', 'yn_r', 'yn_t', 'yn_u', 'yn_y']
     """
+    string = string.replace('0', '')
     string = process_descriptor_abbreviations(string)
     string = process_square_brackets(string, phoneme_catalog)
     string = process_parenthesis(string)
@@ -549,6 +554,10 @@ def get_change_dict(targets: List[str], replacements: List[str], environments: L
     {'am#': 'ar#', 'em#': 'er#', 'im#': 'ir#', 'om#': 'or#', 'um#': 'ur#', 'ym#': 'yr#', 'an#': 'ar#', 'en#': 'er#', 'in#': 'ir#', 'on#': 'or#', 'un#': 'ur#', 'yn#': 'yr#'}
     """
 
+    lt = len(targets)
+    lr = len(replacements)
+    le = len(environments)
+
     # gets all the combinations of each target and environment and put them in one list of tuples
     # e.g. for targets=['m', 'n'] and environments=['a_#', 'e_#', 'i_#', 'o_#', 'u_#', 'y_#']:
     # [('m', 'a_#'), ('m', 'e_#'), ('m', 'i_#'), ('m', 'o_#'), ('m', 'u_#'), ('m', 'y_#'),
@@ -559,16 +568,28 @@ def get_change_dict(targets: List[str], replacements: List[str], environments: L
     # in our example: ['am#', 'em#', 'im#', 'om#', 'um#', 'ym#', 'an#', 'en#', 'in#', 'on#', 'un#', 'yn#']
     init_list = [comb_str[1].replace('_', comb_str[0]) for comb_str in string_combinations]
 
-    # if the replacement is a single item, then we multiply it by the length of the initial list.
-    # TODO: play around with different rules with different number of replacements, targets and environments.
-    if len(replacements) == 1:
+    # only three possible combinations of lengths can exist. The length of the replacement list is:
+    # 1. 1, so all targets and in all environments are replaced with the same character
+    # 2. equal to the target length
+    # 3. equal to the length of the environment multiplied by the length of the target.
+    if lr == 1:
         replacements = replacements * len(init_list)
+        # use the same function we used for the init_list, to get the final list. Now we re substituting '_' with each
+        # replacement string.
+        # in our example: ['ar#', 'er#', 'ir#', 'or#', 'ur#', 'yr#', 'ar#', 'er#', 'ir#', 'or#', 'ur#', 'yr#']
+        final_list = [comb_str[1].replace('_', replacements[i]) for i, comb_str in enumerate(string_combinations)]
+    elif lr == lt:
+        string_combinations = list(itertools.product(replacements, environments))
+        final_list = [comb_str[1].replace('_', comb_str[0]) for comb_str in string_combinations]
+    elif lr == lt * le:
+        final_list = replacements
+    else:
+        raise ValueError('The amount of characters in the replacement list either 1, equal to the one of the target'
+                         'list, or equal to the one of the target multiplied by the length of the environment.')
 
     # use the same function we used for the init_list, to get the final list. Now we re substituting '_' with each
     # replacement string.
     # in our example: ['ar#', 'er#', 'ir#', 'or#', 'ur#', 'yr#', 'ar#', 'er#', 'ir#', 'or#', 'ur#', 'yr#']
-    final_list = [comb_str[1].replace('_', replacements[i]) for i, comb_str in enumerate(string_combinations)]
-
     return {init: final for (init, final) in zip(init_list, final_list)}
 
 
@@ -594,7 +615,7 @@ def apply_sound_change(words: List[str], change_transliterator: Transliterator) 
     did_words_change = []
     new_words = []
     for word in words:  # iterating through word list
-        new_word = change_transliterator.translit(f'#{word}#').strip('#').replace('0', '')
+        new_word = change_transliterator.transliterate(f'#{word}#').strip('#')
         did_words_change.append(new_word != word)
         new_words.append(new_word)
 

@@ -1,3 +1,4 @@
+from ipapy import UNICODE_TO_IPA
 from multipledispatch import dispatch
 from typing import Dict, Any, List, Iterable, Union, Tuple
 from uuid import uuid4, UUID
@@ -238,7 +239,9 @@ def check_descriptors(wanted_descriptors: Union[str, List[str], Tuple[str]],
     ----------
     wanted_descriptors: Union[str, List[str]]
         A string or a list of strings with all the descriptors we want to find in a target descriptor list. If the first
-        character of a string is "!", it means that the descriptor is NOT wanted.
+        character of a string is "!", it means that the descriptor is NOT wanted. In the special case were the wanted
+        descriptors contains the value "*", then all automatically all wanted descriptors are accepted as being part of
+        the target descriptors.
     target_descriptors: Union[str, List[str]]
         A string or a list of strings with all the target descriptors.
 
@@ -247,8 +250,12 @@ def check_descriptors(wanted_descriptors: Union[str, List[str], Tuple[str]],
     List[bool]
         A list that matches the size of the wanted descriptors. Each element corresponds to the value of the condition
         "if wanted descriptor is (not) found in target descriptor list", where "not" is added if the wanted descriptor
-        starts with a "!".
+        starts with a "!". If "*" is in the wanted descriptors, a list of length equal to the length of the wanted
+        descriptor list with values "True" will be the return value.
     """
+    if wanted_descriptors == '*' or '*' in wanted_descriptors:
+        return [True]*len(wanted_descriptors)
+
     if isinstance(wanted_descriptors, str):
         wanted_descriptors = [wanted_descriptors]
 
@@ -261,3 +268,12 @@ def check_descriptors(wanted_descriptors: Union[str, List[str], Tuple[str]],
 
     return [(descriptor in target_descriptors) ^ flip_value
             for (flip_value, descriptor) in zip(flipping_list, wanted_descriptors)]
+
+
+def find_ipachar_by_descriptors(wanted_descriptors: Union[str, List[str], Tuple[str]]):
+    matching_ipachars = []
+    for ipachar in UNICODE_TO_IPA.values():
+        if all(check_descriptors(wanted_descriptors, ipachar.descriptors)):
+            matching_ipachars.append(ipachar)
+
+    return matching_ipachars

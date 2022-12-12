@@ -1,11 +1,12 @@
 import warnings
-from typing import List, Union, Tuple, Iterator, Set, Iterable
+from typing import List, Union, Tuple, Iterator, Set, Iterable, Dict
 
 from ipapy.ipachar import IPAChar, IPALetter, IPAVowel, IPADiacritic, IPASuprasegmental, IPAConsonant, IPATone
 from multipledispatch import dispatch
 
 from language_evolution_toolkit.phones import Phone
-from language_evolution_toolkit.utils import LinguisticObject, ImmutableProperty, TrackingID, sort_by_element_attribute, check_descriptors
+from language_evolution_toolkit.utils import LinguisticObject, ImmutableProperty, TrackingID, \
+    sort_by_element_attribute, check_descriptors
 
 
 # TODO: Think about using an attribute to define the conditions for which each phone is used in.
@@ -246,7 +247,8 @@ class PhonemeCatalog(LinguisticObject):
     phones: List[Phone] = ImmutableProperty()
     all_descriptors: Tuple[str] = ImmutableProperty()
 
-    def __init__(self, phonemes: Iterable[Union[Phoneme, Phone, str]], tracking_id: TrackingID = None, assure_uniqueness: bool = True):
+    def __init__(self, phonemes: Iterable[Union[Phoneme, Phone, str, Dict]],
+                 tracking_id: TrackingID = None, assure_uniqueness: bool = True):
         """
         Parameters
         ----------
@@ -255,7 +257,10 @@ class PhonemeCatalog(LinguisticObject):
         tracking_id: optional, TrackingID
             The tracking identification for linguistic evolution.
         """
-        phonemes = [val if isinstance(val, Phoneme) else Phoneme(val.transcription if isinstance(val, Phone) else val)
+        phonemes = [val if isinstance(val, Phoneme)
+                    else Phoneme(list(val.keys())[0], list(val.values())[0]) if isinstance(val, Dict)
+                    else Phoneme(val.transcription) if isinstance(val, Phone)
+                    else Phoneme(val)
                     for val in phonemes]
 
         if not len(phonemes):
